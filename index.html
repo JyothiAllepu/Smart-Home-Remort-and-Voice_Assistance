@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Home Control</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #6a11cb, #2575fc);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        .container {
+            text-align: center;
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+        h1, h2 {
+            color: #444;
+        }
+        button {
+            padding: 12px 20px;
+            margin: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            background-color: #ff9800;
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background-color: #e68900;
+            transform: scale(1.05);
+        }
+        #deviceStatus {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #333;
+            text-align: left;
+            border: 1px solid #ddd;
+            padding: 10px;
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Smart Home Control</h1>
+        <h2>Select Control Mode:</h2>
+        <button onclick="showRemoteControl()">Remote Control</button>
+        <button onclick="showVoiceControl()">Voice Control</button>
+        
+        <div id="remoteControl" class="hidden">
+            <h2>Remote Control</h2>
+            <button onclick="controlDevice('/light/on')">Turn Light ON</button>
+            <button onclick="controlDevice('/light/off')">Turn Light OFF</button>
+            <br>
+            <button onclick="controlDevice('/fan/on')">Turn Fan ON</button>
+            <button onclick="controlDevice('/fan/off')">Turn Fan OFF</button>
+            <br>
+            <button onclick="controlDevice('/balcony_light/on')">Turn Balcony Light ON</button>
+            <button onclick="controlDevice('/balcony_light/off')">Turn Balcony Light OFF</button>
+        </div>
+
+        <div id="voiceControl" class="hidden">
+            <h2>Voice Control</h2>
+            <button onclick="startListening()">Start Listening</button>
+            <p id="voiceCommandOutput"></p>
+        </div>
+
+        <h2>Device Status</h2>
+        <div id="deviceStatus">
+            <p>Main Light: <span id="statusLight">Unknown</span></p>
+            <p>Fan: <span id="statusFan">Unknown</span></p>
+            <p>Balcony Light: <span id="statusBalcony">Unknown</span></p>
+        </div>
+    </div>
+<script>
+        function showRemoteControl() {
+            document.getElementById('remoteControl').classList.remove('hidden');
+            document.getElementById('voiceControl').classList.add('hidden');
+        }
+
+        function showVoiceControl() {
+            document.getElementById('voiceControl').classList.remove('hidden');
+            document.getElementById('remoteControl').classList.add('hidden');
+        }
+
+        function controlDevice(url) {
+            fetch(url)
+                .then(response => response.text())
+                .then(() => updateDeviceStatus());
+        }
+
+        function startListening() {
+            const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+            recognition.lang = 'en-US';
+            recognition.interimResults = false;
+
+            recognition.onstart = function() {
+                document.getElementById('voiceCommandOutput').innerText = "Listening...";
+            };
+
+            recognition.onresult = function(event) {
+                const command = event.results[0][0].transcript.toLowerCase();
+                document.getElementById('voiceCommandOutput').innerText = "Recognized: " + command;
+                controlDeviceFromVoice(command);
+            };
+
+            recognition.onerror = function(event) {
+                console.error('Error occurred in recognition: ' + event.error);
+            };
+
+            recognition.start();
+        }
+
+        function controlDeviceFromVoice(command) {
+            if (command.includes("turn on light")) {
+                controlDevice('/light/on');
+            } else if (command.includes("turn off light")) {
+                controlDevice('/light/off');
+            } else if (command.includes("turn on fan")) {
+                controlDevice('/fan/on');
+            } else if (command.includes("turn off fan")) {
+                controlDevice('/fan/off');
+            } else if (command.includes("turn on balcony light")) {
+                controlDevice('/balcony_light/on');
+            } else if (command.includes("turn off balcony light")) {
+                controlDevice('/balcony_light/off');
+            } else {
+                document.getElementById('voiceCommandOutput').innerText = "Command not recognized.";
+            }
+        }
+
+        function updateDeviceStatus() {
+            fetch('/status')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('statusLight').innerText = data.light;
+                    document.getElementById('statusFan').innerText = data.fan;
+                    document.getElementById('statusBalcony').innerText = data.balcony_light;
+                });
+        }
+
+        setInterval(updateDeviceStatus, 3000);
+        updateDeviceStatus();
+    </script>
+</body>
